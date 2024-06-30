@@ -195,7 +195,7 @@ public final class CrawlerConfiguration {
      *
      * <p>Does nothing if the given page has already been added. See {@link #getStartPages()}.
      */
-    @JsonProperty("startPage")
+    @JsonProperty("startPages")
     public Builder addStartPages(String... startPages) {
       for (String startPage : startPages) {
         this.startPages.add(Objects.requireNonNull(startPage));

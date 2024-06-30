@@ -48,7 +48,6 @@ public final class ConfigurationLoader {
   public static CrawlerConfiguration read(Reader reader) {
     // This is here to get rid of the unused variable warning.
     Objects.requireNonNull(reader);
-  
     ObjectMapper mapper = new ObjectMapper();
     mapper.disable(JsonParser.Feature.AUTO_CLOSE_SOURCE);
 
@@ -62,3 +61,7 @@ public final class ConfigurationLoader {
       }
     }
 }
+
+
+
+
