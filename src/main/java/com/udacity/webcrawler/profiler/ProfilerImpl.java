@@ -66,7 +66,7 @@ final class ProfilerImpl implements Profiler {
 
     Objects.requireNonNull(path);
 
-    try (Writer writer = Files.newBufferedWriter(path, StandardOpenOption.APPEND, StandardOpenOption.APPEND
+    try (Writer writer = Files.newBufferedWriter(path, StandardOpenOption.APPEND
           , StandardOpenOption.CREATE)) {
       writeData(writer);
       writer.flush();

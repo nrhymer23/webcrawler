@@ -51,7 +51,7 @@ final class ProfilingMethodInterceptor implements InvocationHandler {
       }
     } catch (InvocationTargetException e ) {
       throw e.getTargetException();
-    } catch (IllegalArgumentException e){
+    } catch (IllegalAccessException e){
       throw new RuntimeException(e);
     } finally {
       if (isProfiled & start != null ){
@@ -60,6 +60,6 @@ final class ProfilingMethodInterceptor implements InvocationHandler {
       }
     }
 
-    return null;
+    return result;
   }
 }
