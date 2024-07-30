@@ -23,69 +23,70 @@ import java.util.stream.Collectors;
  * {@link ForkJoinPool} to fetch and process multiple web pages in parallel.
  */
 final class ParallelWebCrawler implements WebCrawler {
-  private final Clock clock;
-  private final Duration timeout;
-  private final int popularWordCount;
-  private final ForkJoinPool pool;
-  private final PageParserFactory parserFactory;
-  private final int maxDepth;
-  private final List<Pattern> ignoredUrls;
+  private final Clock newClock;
+  private final Duration newTimeout;
+  private final int newPopularWordCount;
+  private final ForkJoinPool newPool;
+  private final PageParserFactory newParserFactory;
+  private final int newMaxDepth;
+  private final List<Pattern> newIgnoredUrls;
 
 
   @Inject
   ParallelWebCrawler(
-      Clock clock,
-      @Timeout Duration timeout,
-      @PopularWordCount int popularWordCount,
+      Clock newClock,
+      @Timeout Duration newTimeout,
+      @PopularWordCount int newPopularWordCount,
       @TargetParallelism int threadCount,
-      PageParserFactory parserFactory,
-      @MaxDepth int maxDepth,
-      @IgnoredUrls List<Pattern> ignoredUrls) {
+      PageParserFactory newParserFactory,
+      @MaxDepth int newMaxDepth,
+      @IgnoredUrls List<Pattern> newIgnoredUrls) {
 
-    this.clock = clock;
-    this.timeout = timeout;
-    this.popularWordCount = popularWordCount;
-    this.pool = new ForkJoinPool(Math.min(threadCount, getMaxParallelism()));
-    this.parserFactory = parserFactory;
-    this.maxDepth = maxDepth;
-    this.ignoredUrls = ignoredUrls;
+    this.newClock = newClock;
+    this.newTimeout = newTimeout;
+    this.newPopularWordCount = newPopularWordCount;
+    this.newPool = new ForkJoinPool(Math.min(threadCount, getMaxParallelism()));
+    this.newParserFactory = newParserFactory;
+    this.newMaxDepth = newMaxDepth;
+    this.newIgnoredUrls = newIgnoredUrls;
   }
 
+  
   @Override
   public CrawlResult crawl(List<String> startingUrls) {
 
-    Instant deadline = clock.instant().plus(timeout);
-    ConcurrentHashMap<String, Integer> counts = new ConcurrentHashMap<>();
-    ConcurrentSkipListSet<String> visitedUrls = new ConcurrentSkipListSet<>();
+    Instant newDeadline = newClock.instant().plus(newTimeout);
+    ConcurrentHashMap<String, Integer> newCounts = new ConcurrentHashMap<>();
+    ConcurrentSkipListSet<String> newVisitedUrls = new ConcurrentSkipListSet<>();
 
-    for(String url : startingUrls) {
-      if(!clock.instant().isAfter(deadline)){
+    for(String newUrl : startingUrls) {
+      if(!newClock.instant().isAfter(newDeadline)){
         CrawlTask crawlTask = new CrawlTask.Builder()
-                .setCounts(counts)
-                .setUrl(url)
-                .setDeadline(deadline)
-                .setClock(clock)
-                .setMaxDepth(maxDepth)
-                .setIgnoredUrls(ignoredUrls)
-                .setParserFactory(parserFactory)
-                .setVisitedUrls(visitedUrls)
+                .setCounts(newCounts)
+                .setUrl(newUrl)
+                .setDeadline(newDeadline)
+                .setClock(newClock)
+                .setMaxDepth(newMaxDepth)
+                .setIgnoredUrls(newIgnoredUrls)
+                .setParserFactory(newParserFactory)
+                .setVisitedUrls(newVisitedUrls)
                 .build();
 
-        pool.invoke(crawlTask);
+        newPool.invoke(crawlTask);
       }
 
     }
 
-    if(counts.isEmpty()) {
+    if(newCounts.isEmpty()) {
       return new CrawlResult.Builder()
-              .setWordCounts(counts)
-              .setUrlsVisited(visitedUrls.size())
+              .setWordCounts(newCounts)
+              .setUrlsVisited(newVisitedUrls.size())
               .build();
     }
 
     return new CrawlResult.Builder()
-            .setWordCounts(WordCounts.sort(counts, popularWordCount))
-            .setUrlsVisited(visitedUrls.size())
+            .setWordCounts(WordCounts.sort(newCounts, newPopularWordCount))
+            .setUrlsVisited(newVisitedUrls.size())
             .build();
   }
 

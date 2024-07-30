@@ -14,131 +14,126 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class CrawlTask extends RecursiveAction {
-    private final Clock clock;
-    private final Instant deadline;
-    private final PageParserFactory parserFactory;
-    private final int maxDepth;
-    private final List<Pattern> ignoredUrls;
-    private final String url;
-    private final ConcurrentHashMap<String, Integer> counts;
-    private final ConcurrentSkipListSet<String> visitedUrls;
+    private final Clock newClock;
+    private final Instant newDeadline;
+    private final PageParserFactory newParserFactory;
+    private final int newMaxDepth;
+    private final List<Pattern> newIgnoredUrls;
+    private final String newUrl;
+    private final ConcurrentHashMap<String, Integer> newCounts;
+    private final ConcurrentSkipListSet<String> newVisitedUrls;
 
-
-    private CrawlTask(Clock clock, Instant deadline, PageParserFactory parserFactory, int maxDepth, List<Pattern> ignoredUrls, String url, ConcurrentHashMap<String, Integer> counts, ConcurrentSkipListSet<String> visitedUrls) {
-        this.clock = clock;
-        this.deadline = deadline;
-        this.parserFactory = parserFactory;
-        this.maxDepth = maxDepth;
-        this.ignoredUrls = ignoredUrls;
-        this.url = url;
-        this.counts = counts;
-        this.visitedUrls = visitedUrls;
+    public CrawlTask(Builder builder) {
+        this.newClock = builder.newClock;
+        this.newDeadline = builder.newDeadline;
+        this.newParserFactory = builder.newParserFactory;
+        this.newMaxDepth = builder.newMaxDepth;
+        this.newIgnoredUrls = builder.newIgnoredUrls;
+        this.newUrl = builder.newUrl;
+        this.newCounts = builder.newCounts;
+        this.newVisitedUrls = builder.newVisitedUrls;
     }
 
     @Override
     protected void compute() {
-        if (maxDepth == 0 || clock.instant().isAfter(deadline)) {
+        if (shouldStopCrawling()) {
             return;
         }
 
-        for (Pattern pattern : ignoredUrls) {
-            if (pattern.matcher(url).matches()) {
-                return;
-            }
-        }
-        if (!visitedUrls.add(url)) {
+        if (isUrlIgnoredOrVisited()) {
             return;
         }
 
-        PageParser.Result result = parserFactory.get(url).parse();
-
-        for (Map.Entry<String, Integer> e : result.getWordCounts().entrySet()) {
-            counts.compute(e.getKey(), (k, v) -> (v == null) ? e.getValue() : e.getValue() + counts.get(e.getKey()));
-        }
-
-
-        List<CrawlTask> subTasks = result.getLinks().stream()
-                .map(link -> new CrawlTask.Builder()
-                        .setClock(clock)
-                        .setDeadline(deadline)
-                        .setParserFactory(parserFactory)
-                        .setMaxDepth(maxDepth - 1)
-                        .setIgnoredUrls(ignoredUrls)
-                        .setUrl(link)
-                        .setCounts(counts)
-                        .setVisitedUrls(visitedUrls)
-                        .build())
-                .collect(Collectors.toList());
-
+        PageParser.Result result = newParserFactory.get(newUrl).parse();
+        updateCounts(result);
+        List<CrawlTask> subTasks = createSubTasks(result);
         invokeAll(subTasks);
     }
 
+    private boolean shouldStopCrawling() {
+        return newMaxDepth == 0 || newClock.instant().isAfter(newDeadline);
+    }
 
+    private boolean isUrlIgnoredOrVisited() {
+        for (Pattern pattern : newIgnoredUrls) {
+            if (pattern.matcher(newUrl).matches()) {
+                return true;
+            }
+        }
+        return !newVisitedUrls.add(newUrl);
+    }
 
+    private void updateCounts(PageParser.Result result) {
+        result.getWordCounts().forEach((word, count) ->
+                newCounts.merge(word, count, Integer::sum));
+    }
+
+    private List<CrawlTask> createSubTasks(PageParser.Result result) {
+        return result.getLinks().stream()
+                .map(link -> new Builder()
+                        .setClock(newClock)
+                        .setDeadline(newDeadline)
+                        .setParserFactory(newParserFactory)
+                        .setMaxDepth(newMaxDepth - 1)
+                        .setIgnoredUrls(newIgnoredUrls)
+                        .setUrl(link)
+                        .setCounts(newCounts)
+                        .setVisitedUrls(newVisitedUrls)
+                        .build())
+                .collect(Collectors.toList());
+    }
 
     public static final class Builder {
-        private Clock clock;
-        private Instant deadline;
-        private PageParserFactory parserFactory;
-        private int maxDepth;
-        private List<Pattern> ignoredUrls;
-        private String url;
-        private ConcurrentHashMap<String, Integer> counts;
-        private ConcurrentSkipListSet<String> visitedUrls;
+        private Clock newClock;
+        private Instant newDeadline;
+        private PageParserFactory newParserFactory;
+        private int newMaxDepth;
+        private List<Pattern> newIgnoredUrls;
+        private String newUrl;
+        private ConcurrentHashMap<String, Integer> newCounts;
+        private ConcurrentSkipListSet<String> newVisitedUrls;
 
         public CrawlTask build() {
-            return new CrawlTask(
-                    clock,
-                    deadline,
-                    parserFactory,
-                    maxDepth,
-                    ignoredUrls,
-                    url,
-                    counts,
-                    visitedUrls
-            );
+            return new CrawlTask(this);
         }
 
-        public Builder setClock(Clock clock) {
-            this.clock = clock;
+        public Builder setClock(Clock newClock) {
+            this.newClock = newClock;
             return this;
         }
 
-        public Builder setDeadline(Instant deadline) {
-            this.deadline = deadline;
+        public Builder setDeadline(Instant newDeadline) {
+            this.newDeadline = newDeadline;
             return this;
         }
 
-        public Builder setParserFactory(PageParserFactory parserFactory) {
-            this.parserFactory = parserFactory;
-            return this;
-
-        }
-
-        public Builder setMaxDepth (int maxDepth) {
-            this.maxDepth = maxDepth;
-            return this;
-
-        }
-
-        public Builder setIgnoredUrls(List<Pattern> ignoredUrls) {
-            this.ignoredUrls = ignoredUrls;
-            return this;
-
-        }
-
-        public Builder setUrl(String url) {
-            this.url = url;
+        public Builder setParserFactory(PageParserFactory newParserFactory) {
+            this.newParserFactory = newParserFactory;
             return this;
         }
 
-        public Builder setCounts(ConcurrentHashMap<String, Integer> counts) {
-            this.counts = counts;
+        public Builder setMaxDepth(int newMaxDepth) {
+            this.newMaxDepth = newMaxDepth;
             return this;
         }
 
-        public Builder setVisitedUrls(ConcurrentSkipListSet<String> visitedUrls){
-            this.visitedUrls = visitedUrls;
+        public Builder setIgnoredUrls(List<Pattern> newIgnoredUrls) {
+            this.newIgnoredUrls = newIgnoredUrls;
+            return this;
+        }
+
+        public Builder setUrl(String newUrl) {
+            this.newUrl = newUrl;
+            return this;
+        }
+
+        public Builder setCounts(ConcurrentHashMap<String, Integer> newCounts) {
+            this.newCounts = newCounts;
+            return this;
+        }
+
+        public Builder setVisitedUrls(ConcurrentSkipListSet<String> newVisitedUrls) {
+            this.newVisitedUrls = newVisitedUrls;
             return this;
         }
     }

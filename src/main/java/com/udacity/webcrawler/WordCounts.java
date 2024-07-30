@@ -26,23 +26,31 @@ final class WordCounts {
    * @param popularWordCount the number of popular words to include in the result map.
    * @return a map containing the top {@param popularWordCount} words and counts in the right order.
    */
-  static Map<String, Integer> sort(Map<String, Integer> wordCounts, int popularWordCount) {
+  //static Map<String, Integer> sort(Map<String, Integer> wordCounts, int popularWordCount) {
 
     // TODO: Reimplement this method using only the Stream API and lambdas and/or method references
 
-    WordCountComparator wordCountComparator = new WordCountComparator();
+    static Map<String, Integer> sort(Map<String, Integer> wordCounts, int popularWordCount) {
 
-    return wordCounts.entrySet()
-            .stream()
-            .sorted(wordCountComparator)
-            .limit(Math.min(popularWordCount, wordCounts.size()))
-            .collect(Collectors.toMap(
-                    Map.Entry::getKey,
-                    Map.Entry::getValue,
-                            (k,v) -> k,
-                    LinkedHashMap::new));
-
-  }
+      return wordCounts.entrySet()
+              .stream()
+              .sorted((entry1, entry2) -> {
+                int countComparison = entry2.getValue().compareTo(entry1.getValue());
+                if (countComparison != 0) return countComparison;
+  
+                int lengthComparison = Integer.compare(entry2.getKey().length(), entry1.getKey().length());
+                if (lengthComparison != 0) return lengthComparison;
+  
+                return entry1.getKey().compareTo(entry2.getKey());
+              })
+              .limit(popularWordCount)
+              .collect(Collectors.toMap(
+                      Map.Entry::getKey,
+                      Map.Entry::getValue,
+                      (oldValue, newValue) -> oldValue, // In case of duplicate keys, keep the old value
+                      LinkedHashMap::new
+              ));
+    }
 
   /**
    * A {@link Comparator} that sorts word count pairs correctly:
@@ -60,6 +68,7 @@ final class WordCounts {
       if (!a.getValue().equals(b.getValue())) {
         return b.getValue() - a.getValue();
       }
+
       if (a.getKey().length() != b.getKey().length()) {
         return b.getKey().length() - a.getKey().length();
       }

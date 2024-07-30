@@ -14,15 +14,15 @@ import java.util.Objects;
  */
 final class ProfilingMethodInterceptor implements InvocationHandler {
 
-  private final Clock clock;
+  private final Clock newClock;
   private final Object delegate;
-  private final ProfilingState state;
+  private final ProfilingState newState;
 
   // TODO: You will need to add more instance fields and constructor arguments to this class.
-  ProfilingMethodInterceptor(Clock clock, Object delegate, ProfilingState state) {
-    this.clock = Objects.requireNonNull(clock);
+  ProfilingMethodInterceptor(Clock newClock, Object delegate, ProfilingState newState) {
+    this.newClock = Objects.requireNonNull(newClock);
     this.delegate = Objects.requireNonNull(delegate);
-    this.state = Objects.requireNonNull(state);
+    this.newState = Objects.requireNonNull(newState);
 
   }
 
@@ -35,18 +35,20 @@ final class ProfilingMethodInterceptor implements InvocationHandler {
     //       ProfilingState methods.
 
       boolean isProfiled = method.isAnnotationPresent(Profiled.class);
+      
     Instant start = null;
 
     if (isProfiled) {
-      start = clock.instant();
+      start = newClock.instant();
     }
 
     Object result;
 
     try {
-      if (method.getName().equals("equals") && method.getParameterCount() == 1 && method.getParameterTypes()[0].equals(Object.class)) {
-        result = delegate.equals(args[0]);
-      } else {
+      if ("equals".equals(method.getName()) && method.getParameterCount() == 1 && method.getParameterTypes()[0].equals(Object.class)) {
+        result = method.invoke(delegate, args);
+    }
+    else {
         result = method.invoke(delegate, args);
       }
     } catch (InvocationTargetException e ) {
@@ -54,10 +56,10 @@ final class ProfilingMethodInterceptor implements InvocationHandler {
     } catch (IllegalAccessException e){
       throw new RuntimeException(e);
     } finally {
-      if (isProfiled & start != null ){
-        Duration duration = Duration.between(start, clock.instant());
-        state.record(delegate.getClass(),method, duration);
-      }
+      if (isProfiled && start != null) {
+        Duration duration = Duration.between(start, newClock.instant());
+        newState.record(delegate.getClass(), method, duration);
+    }    
     }
 
     return result;

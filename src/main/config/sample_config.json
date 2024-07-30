@@ -1,10 +1,11 @@
 {
-  "startPages": ["https://www.udacity.com/"],
+  "startPages": ["https://en.wikipedia.org/wiki/Java_(programming_language)"],
   "ignoredUrls": ["https://blog.udacity.com/.*"],
   "ignoredWords": ["^.{1,3}$"],
   "parallelism": 4,
   "maxDepth": 2,
   "timeoutSeconds": 5,
-  "popularWordCount": 5,
-  "profileOutputPath": "profileData.txt"
+  "popularWordCount": 6,
+  "profileOutputPath": "profileData.txt",
+  "resultPath": "crawlerData.json"
 }

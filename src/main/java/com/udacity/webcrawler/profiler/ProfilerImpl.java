@@ -19,14 +19,14 @@ import static java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME;
  */
 final class ProfilerImpl implements Profiler {
 
-  private final Clock clock;
-  private final ProfilingState state = new ProfilingState();
-  private final ZonedDateTime startTime;
+  private final Clock newClock;
+  private final ProfilingState newState = new ProfilingState();
+  private final ZonedDateTime newStartTime;
 
   @Inject
-  ProfilerImpl(Clock clock) {
-    this.clock = Objects.requireNonNull(clock);
-    this.startTime = ZonedDateTime.now(clock);
+  ProfilerImpl(Clock newClock) {
+    this.newClock = Objects.requireNonNull(newClock);
+    this.newStartTime = ZonedDateTime.now(newClock);
   }
 
 
@@ -44,17 +44,19 @@ final class ProfilerImpl implements Profiler {
     //       ProfilingMethodInterceptor and return a dynamic proxy from this method.
     //       See https://docs.oracle.com/javase/10/docs/api/java/lang/reflect/Proxy.html.
 
-    if(!profiledClass(klass)){
-      throw new IllegalArgumentException(klass.getName() + " does not contain any methods annoted with @Profiled");
-    }
+  
+    if (profiledClass(klass) == false) {
+      throw new IllegalArgumentException("No methods annotated with @Profiled found in " + klass.getName());
+  }
+  
 
-    ProfilingMethodInterceptor interceptor = new ProfilingMethodInterceptor(clock, delegate, state);
+    ProfilingMethodInterceptor interceptor = new ProfilingMethodInterceptor(newClock, delegate, newState);
 
     Object proxy = Proxy.newProxyInstance(
-            ProfilerImpl.class.getClassLoader(),
-            new Class[]{klass},
-            interceptor
-    );
+      ProfilerImpl.class.getClassLoader(), // The class loader to define the proxy class
+      new Class<?>[]{klass}, // The interfaces to be implemented by the proxy class
+      interceptor // The invocation handler to dispatch method invocations to
+  );
 
     return (T) proxy;
   }
@@ -66,21 +68,19 @@ final class ProfilerImpl implements Profiler {
 
     Objects.requireNonNull(path);
 
-    try (Writer writer = Files.newBufferedWriter(path, StandardOpenOption.APPEND
-          , StandardOpenOption.CREATE)) {
+    try (Writer writer = Files.newBufferedWriter(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
       writeData(writer);
-      writer.flush();
-    } catch (IOException ex){
-      ex.printStackTrace();
-    }
+  } catch (IOException e) {
+      System.err.println("Error writing data to file: " + e.getMessage());
+      e.printStackTrace();
   }
-
+}
   @Override
   public void writeData(Writer writer) throws IOException {
     writer.write(System.lineSeparator());
-    writer.write("Run at " + RFC_1123_DATE_TIME.format(startTime));
+    writer.write("Run at " + RFC_1123_DATE_TIME.format(newStartTime));
     writer.write(System.lineSeparator());
-    state.write(writer);
+    newState.write(writer);
     writer.write(System.lineSeparator());
   }
 }
